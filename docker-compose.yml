@@ -1,0 +1,121 @@
+version: "3.8"
+
+# Local development stack using Redpanda (Kafka-compatible, no ZooKeeper required).
+# Redpanda starts in <1s and exposes the full Kafka API — no code changes needed.
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose down -v        # Stop and remove volumes
+#
+# Services:
+#   redpanda   — Kafka-compatible broker on localhost:9092
+#   console    — Redpanda Console UI at http://localhost:8080
+#   prometheus — Metrics scraping at http://localhost:9090
+#   grafana    — Dashboards at http://localhost:3000 (admin/admin)
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Redpanda — Kafka-compatible broker (single node, no ZooKeeper)
+  # ---------------------------------------------------------------------------
+  redpanda:
+    image: redpandadata/redpanda:v23.3.11
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp 1
+      - --memory 512M
+      - --reserve-memory 0M
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    ports:
+      - "9092:9092"      # Kafka API (external / your notebooks & scripts)
+      - "29092:29092"    # Kafka API (internal / other containers)
+      - "8082:8082"      # Pandaproxy (Kafka REST API)
+      - "9644:9644"      # Admin API
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redpanda Console — Web UI for topic inspection, consumer group lag, etc.
+  # Access at: http://localhost:8080
+  # ---------------------------------------------------------------------------
+  console:
+    image: redpandadata/console:v2.4.3
+    container_name: redpanda-console
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+
+  # ---------------------------------------------------------------------------
+  # Topic initializer — creates required topics on startup
+  # ---------------------------------------------------------------------------
+  init-topics:
+    image: redpandadata/redpanda:v23.3.11
+    container_name: init-topics
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      rpk topic create demo_test      --brokers redpanda:29092 --partitions 8 --replicas 1
+      rpk topic create demo_test_dlq  --brokers redpanda:29092 --partitions 1 --replicas 1
+      rpk topic create demo_alerts    --brokers redpanda:29092 --partitions 1 --replicas 1
+      echo 'Topics created.'
+      "
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Prometheus — Scrapes metrics from consumer.py (:8000/metrics)
+  # Access at: http://localhost:9090
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+
+  # ---------------------------------------------------------------------------
+  # Grafana — Dashboards for pipeline observability
+  # Access at: http://localhost:3000  (admin / admin)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  redpanda-data:
+  prometheus-data:
+  grafana-data:

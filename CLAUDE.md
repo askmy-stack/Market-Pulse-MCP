@@ -116,13 +116,22 @@ KafkaProducer.ipynb  -->  Apache Kafka (EC2 :9092, topic: demo_test)
 
 ## Suggested Improvements (for future work)
 
-- Add `requirements.txt` with pinned versions of `kafka-python`, `pandas`, `s3fs`.
-- Extract hardcoded config values into environment variables or a `config.py`.
-- Add error handling and retry logic in both producer and consumer.
-- Add logging instead of bare `print` statements.
-- Add a `docker-compose.yml` for local Kafka development (Zookeeper + Broker).
-- Add basic unit/integration tests.
-- Add a `.env.example` template.
+See [`ROADMAP.md`](./ROADMAP.md) for the full technical audit and phased feature roadmap.
+Key items:
+
+- Replace `kafka-python` (unmaintained since 2021) with `confluent-kafka-python`
+- Add `requirements.txt` with pinned versions — see file in repo root
+- Extract all hardcoded config values to `.env` — see `.env.example` template
+- Add error handling, retry logic, and graceful shutdown (`SIGINT`/`SIGTERM` handlers)
+- Add `structlog` structured JSON logging
+- Replace one-file-per-message S3 writes with time/size-windowed Parquet micro-batches
+- Add `docker-compose.yml` for local Kafka dev with Redpanda — see file in repo root
+- Add Pydantic v2 schema validation for messages
+- Add a Dead Letter Queue (DLQ) pattern for failed messages
+- Add basic unit/integration tests
+- **Hero Feature 1:** AI anomaly detection + Claude API narrative alerts (`anomaly_detector.py`)
+- **Hero Feature 2:** Real-time Streamlit dashboard with Kafka lag monitoring (`dashboard.py`)
+- **Hero Feature 3:** Avro schema + AWS Glue Schema Registry for schema evolution
 
 ## Branch Strategy
 
