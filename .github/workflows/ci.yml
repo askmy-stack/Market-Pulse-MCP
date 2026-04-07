@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          # Install only the linting / type-checking subset — no Kafka/AWS needed in CI
+          pip install ruff mypy pydantic
+
+      - name: Lint with ruff
+        run: ruff check .
+
+      - name: Type check with mypy
+        run: mypy models.py producer.py consumer.py dlq_monitor.py anomaly_detector.py --ignore-missing-imports --no-strict-optional
+
+  schema-validation:
+    name: Schema Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install pydantic
+
+      - name: Validate StockRecord schema with known-good data
+        run: |
+          python - <<'EOF'
+          from models import StockRecord, DLQRecord
+
+          # Valid record — should pass
+          good = {
+              "Index": "HSI",
+              "Date": "2021-05-31",
+              "Open": 28000.0,
+              "High": 29000.0,
+              "Low": 27000.0,
+              "Close": 28500.0,
+              "Adj Close": 28500.0,
+              "Volume": 1234567.0,
+              "CloseUSD": 28500.0,
+          }
+          rec = StockRecord.model_validate(good)
+          assert rec.Index == "HSI"
+          assert rec.to_kafka_dict()["Adj Close"] == 28500.0
+          print("StockRecord validation: PASS")
+
+          # High < Low — should fail
+          import sys
+          bad = {**good, "High": 100.0, "Low": 200.0}
+          try:
+              StockRecord.model_validate(bad)
+              print("ERROR: should have raised ValidationError")
+              sys.exit(1)
+          except Exception:
+              print("High < Low rejection: PASS")
+
+          # Empty Index — should fail
+          bad2 = {**good, "Index": "   "}
+          try:
+              StockRecord.model_validate(bad2)
+              print("ERROR: should have raised ValidationError")
+              sys.exit(1)
+          except Exception:
+              print("Empty Index rejection: PASS")
+
+          print("All schema checks passed.")
+          EOF

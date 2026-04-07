@@ -1,0 +1,59 @@
+{
+  "type": "record",
+  "name": "StockRecord",
+  "namespace": "com.stockmarket.pipeline",
+  "doc": "A single OHLCV record for a stock index. Register with AWS Glue Schema Registry under the name defined in GLUE_SCHEMA_NAME.",
+  "fields": [
+    {
+      "name": "Index",
+      "type": "string",
+      "doc": "Stock index symbol, e.g. HSI, SPX, J203.JO"
+    },
+    {
+      "name": "Date",
+      "type": "string",
+      "doc": "Trading date as ISO-8601 string (YYYY-MM-DD)"
+    },
+    {
+      "name": "Open",
+      "type": "double",
+      "doc": "Opening price for the trading session"
+    },
+    {
+      "name": "High",
+      "type": "double",
+      "doc": "Intraday high price"
+    },
+    {
+      "name": "Low",
+      "type": "double",
+      "doc": "Intraday low price"
+    },
+    {
+      "name": "Close",
+      "type": "double",
+      "doc": "Closing price for the trading session"
+    },
+    {
+      "name": "Adj_Close",
+      "type": "double",
+      "doc": "Dividend- and split-adjusted closing price"
+    },
+    {
+      "name": "Volume",
+      "type": "double",
+      "doc": "Total shares / contracts traded during the session"
+    },
+    {
+      "name": "CloseUSD",
+      "type": "double",
+      "doc": "Closing price converted to USD using period exchange rates"
+    },
+    {
+      "name": "SentimentScore",
+      "type": ["null", "double"],
+      "default": null,
+      "doc": "BACKWARD-compatible addition: optional LLM-derived sentiment score [-1.0, 1.0]. Null if not computed."
+    }
+  ]
+}
