@@ -23,12 +23,12 @@ from __future__ import annotations
 import json
 import os
 import signal
-import time
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 from statistics import mean, stdev
 from typing import Any
 
+import requests
 import structlog
 from anthropic import Anthropic
 from confluent_kafka import Consumer, KafkaError, Producer
@@ -171,7 +171,6 @@ def _publish_alert(
     )
 
     if SLACK_WEBHOOK_URL:
-        import requests
         direction = "spiked above" if z_score > 0 else "dropped below"
         text = (
             f":rotating_light: *Anomaly Alert — {record.Index}*\n"
@@ -180,8 +179,7 @@ def _publish_alert(
             f"_{explanation}_"
         )
         try:
-            import requests as req
-            req.post(SLACK_WEBHOOK_URL, json={"text": text}, timeout=5).raise_for_status()
+            requests.post(SLACK_WEBHOOK_URL, json={"text": text}, timeout=5).raise_for_status()
         except Exception as exc:
             log.warning("slack_alert_failed", error=str(exc))
 
@@ -256,7 +254,9 @@ def main() -> None:
                     explanation = _explain_anomaly(record, z_score, context)
                 except Exception as exc:
                     log.error("claude_api_failed", error=str(exc))
-                    explanation = f"Anomaly detected (Z={z_score:.2f}); LLM explanation unavailable."
+                    explanation = (
+                        f"Anomaly detected (Z={z_score:.2f}); LLM explanation unavailable."
+                    )
 
                 _publish_alert(alert_producer, record, z_score, explanation)
                 total_alerts += 1

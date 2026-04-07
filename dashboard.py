@@ -27,7 +27,7 @@ from datetime import datetime
 import plotly.graph_objects as go
 import requests
 import streamlit as st
-from confluent_kafka import Consumer, KafkaError
+from confluent_kafka import Consumer
 from dotenv import load_dotenv
 
 load_dotenv()

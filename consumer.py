@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import os
 import signal
-import sys
 import time
 import uuid
 from datetime import datetime, timezone
@@ -29,7 +28,7 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 import structlog
-from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
+from confluent_kafka import Consumer, KafkaError, Producer
 from dotenv import load_dotenv
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 from pydantic import ValidationError
@@ -260,7 +259,6 @@ def main() -> None:
 
     batch: list[dict] = []
     last_flush_time = time.monotonic()
-    last_committed_offsets: dict[int, int] = {}  # partition → offset
 
     try:
         while _running:

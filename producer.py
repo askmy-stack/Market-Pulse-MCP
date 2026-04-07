@@ -21,7 +21,7 @@ from typing import Any
 
 import pandas as pd
 import structlog
-from confluent_kafka import KafkaException, Producer
+from confluent_kafka import Producer
 from dotenv import load_dotenv
 from pydantic import ValidationError
 

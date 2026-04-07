@@ -7,9 +7,6 @@ consumer.py (validate after deserializing from Kafka).
 
 from __future__ import annotations
 
-from datetime import date
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -36,7 +33,7 @@ class StockRecord(BaseModel):
         return v.strip()
 
     @model_validator(mode="after")
-    def high_gte_low(self) -> "StockRecord":
+    def high_gte_low(self) -> StockRecord:
         if self.High < self.Low:
             raise ValueError(
                 f"High ({self.High}) must be >= Low ({self.Low}) for {self.Index}"

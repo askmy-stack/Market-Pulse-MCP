@@ -1,0 +1,11 @@
+# Ruff configuration
+# https://docs.astral.sh/ruff/configuration/
+
+# Exclude legacy tutorial notebooks from linting — they are retained as
+# original artifacts and are not part of the production codebase.
+exclude = ["*.ipynb"]
+
+line-length = 100
+
+[lint]
+select = ["E", "F", "I", "UP"]

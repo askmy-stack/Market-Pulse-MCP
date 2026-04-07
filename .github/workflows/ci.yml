@@ -24,13 +24,13 @@ jobs:
         run: |
           pip install --upgrade pip
           # Install only the linting / type-checking subset — no Kafka/AWS needed in CI
-          pip install ruff mypy pydantic
+          pip install ruff mypy pydantic types-requests
 
       - name: Lint with ruff
         run: ruff check .
 
       - name: Type check with mypy
-        run: mypy models.py producer.py consumer.py dlq_monitor.py anomaly_detector.py --ignore-missing-imports --no-strict-optional
+        run: mypy models.py producer.py consumer.py dlq_monitor.py anomaly_detector.py --disable-error-code=import-untyped
 
   schema-validation:
     name: Schema Validation
