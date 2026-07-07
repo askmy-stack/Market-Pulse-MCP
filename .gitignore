@@ -1,0 +1,26 @@
+# Environment
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Docker
+.netlify/
+
+# OS
+.DS_Store
+
+# Data (large files tracked separately)
+# indexProcessed.csv is kept in repo from original project

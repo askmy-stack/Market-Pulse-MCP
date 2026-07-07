@@ -1,0 +1,147 @@
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.4
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: marketpulse
+      POSTGRES_USER: marketpulse
+      POSTGRES_PASSWORD: marketpulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketpulse -d marketpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    command: uvicorn marketpulse.api.app:create_app --factory --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    env_file: .env.example
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      POSTGRES_HOST: postgres
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  stock-producer:
+    build: .
+    command: python -m marketpulse.producers.mock_stock_producer
+    env_file: .env.example
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    restart: unless-stopped
+
+  news-producer:
+    build: .
+    command: python -m marketpulse.producers.mock_news_producer
+    env_file: .env.example
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    restart: unless-stopped
+
+  stock-consumer:
+    build: .
+    command: python -m marketpulse.consumers.stock_consumer
+    env_file: .env.example
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      POSTGRES_HOST: postgres
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  news-consumer:
+    build: .
+    command: python -m marketpulse.consumers.news_consumer
+    env_file: .env.example
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      POSTGRES_HOST: postgres
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  stream-processor:
+    build: .
+    command: python -m marketpulse.consumers.stream_processor
+    env_file: .env.example
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      POSTGRES_HOST: postgres
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mcp-server:
+    build: .
+    command: python -m marketpulse.mcp.server
+    env_file: .env.example
+    environment:
+      MCP_API_BASE_URL: http://api:8000
+      POSTGRES_HOST: postgres
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+    depends_on:
+      api:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
