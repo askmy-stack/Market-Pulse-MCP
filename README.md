@@ -34,6 +34,3 @@ Partitioning by ticker symbol keeps all events for a symbol ordered on the same 
 
 MIT
 
----
-
-Built by [Abhinaysai Kamineni](https://github.com/askmy-stack)
