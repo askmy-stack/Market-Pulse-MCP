@@ -1,4 +1,4 @@
-# kafka-stock-pipeline
+# MarketPulse MCP
 
 > Real-time stock market data processing pipeline built with Apache Kafka.
 
