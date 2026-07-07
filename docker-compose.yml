@@ -21,7 +21,7 @@ services:
       retries: 10
 
   postgres:
-    image: postgres:16-alpine
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
     environment:
       POSTGRES_DB: marketpulse
       POSTGRES_USER: marketpulse
@@ -30,6 +30,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./deploy/timescaledb/init.sql:/docker-entrypoint-initdb.d/01-timescale.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U marketpulse -d marketpulse"]
       interval: 5s
@@ -58,7 +59,7 @@ services:
 
   stock-producer:
     build: .
-    command: python -m marketpulse.producers.mock_stock_producer
+    command: python -m marketpulse.producers.stock_producer
     env_file: .env.example
     environment:
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
@@ -66,6 +67,11 @@ services:
       redpanda:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   news-producer:
     build: .
@@ -77,6 +83,11 @@ services:
       redpanda:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   stock-consumer:
     build: .
@@ -91,6 +102,11 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   news-consumer:
     build: .
@@ -105,6 +121,11 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   stream-processor:
     build: .
@@ -119,6 +140,11 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   mcp-server:
     build: .
@@ -133,6 +159,11 @@ services:
         condition: service_healthy
     stdin_open: true
     tty: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -143,5 +174,21 @@ services:
     depends_on:
       - api
 
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data:
+  grafana_data:

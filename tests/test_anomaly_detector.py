@@ -18,7 +18,11 @@ def test_detects_price_anomaly():
     )
     anomaly = detector.detect(features)
     assert anomaly is not None
-    assert anomaly.severity in {AnomalySeverity.MEDIUM, AnomalySeverity.HIGH, AnomalySeverity.CRITICAL}
+    assert anomaly.severity in {
+        AnomalySeverity.MEDIUM,
+        AnomalySeverity.HIGH,
+        AnomalySeverity.CRITICAL,
+    }
     assert "price_zscore" in anomaly.anomaly_type
 
 

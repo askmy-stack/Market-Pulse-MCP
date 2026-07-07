@@ -115,6 +115,17 @@ class PipelineHealth(Base):
     metrics: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
+class NewsEmbedding(Base):
+    __tablename__ = "news_embeddings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    embedding_model: Mapped[str] = mapped_column(String(64), default="hash")
+    dimension: Mapped[int] = mapped_column(Integer, default=64)
+    embedding: Mapped[dict] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.utcnow)
+
+
 _engine = None
 _SessionLocal = None
 

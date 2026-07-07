@@ -93,9 +93,7 @@ class MarketBriefEvent(BaseModel):
     symbols: list[str] = Field(default_factory=list)
     content: str
     generated_at: datetime = Field(default_factory=datetime.utcnow)
-    disclaimer: str = (
-        "Correlation-based context only. Not financial advice. No price predictions."
-    )
+    disclaimer: str = "Correlation-based context only. Not financial advice. No price predictions."
 
 
 class PipelineHealthEvent(BaseModel):

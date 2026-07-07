@@ -31,7 +31,9 @@ class MockNewsProducer:
                 key = event.symbols[0] if event.symbols else "market"
                 publish_event(self.producer, topic, key, event)
                 self.producer.flush(1)
-                logger.info("published_news", headline=event.headline[:60], category=event.category.value)
+                logger.info(
+                    "published_news", headline=event.headline[:60], category=event.category.value
+                )
             time.sleep(self.settings.mock_news_interval_seconds)
 
 

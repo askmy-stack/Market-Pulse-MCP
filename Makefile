@@ -1,4 +1,4 @@
-.PHONY: up down build logs produce-stock produce-news api test lint format mcp init-db
+.PHONY: up down build logs produce-stock produce-news api test lint format mcp init-db grafana terraform-plan helm-install pre-commit
 
 up:
 	docker compose up -d --build
@@ -13,7 +13,7 @@ logs:
 	docker compose logs -f
 
 produce-stock:
-	python -m marketpulse.producers.mock_stock_producer
+	python -m marketpulse.producers.stock_producer
 
 produce-news:
 	python -m marketpulse.producers.mock_news_producer
@@ -39,3 +39,16 @@ init-db:
 
 install:
 	pip install -e ".[dev]"
+
+grafana:
+	@echo "Grafana: http://localhost:3000 (admin/admin)"
+	@echo "Prometheus: http://localhost:9091"
+
+terraform-plan:
+	cd deploy/terraform && terraform init && terraform plan
+
+helm-install:
+	helm install marketpulse deploy/helm/marketpulse
+
+pre-commit:
+	pre-commit run --all-files

@@ -1,0 +1,155 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Events per Second (Stock Ticks)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "sum(rate(market_stock_ticks_ingested_total[1m]))",
+          "legendFormat": "ticks/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}},
+      "id": 1
+    },
+    {
+      "title": "News Articles per Minute",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {
+          "expr": "sum(rate(market_news_articles_ingested_total[1m])) * 60",
+          "legendFormat": "articles/min",
+          "refId": "A"
+        }
+      ],
+      "id": 2
+    },
+    {
+      "title": "Anomalies by Symbol",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {
+          "expr": "sum by (symbol) (increase(market_anomalies_by_symbol_total[1h]))",
+          "legendFormat": "{{symbol}}",
+          "refId": "A"
+        }
+      ],
+      "id": 3
+    },
+    {
+      "title": "Anomalies by Severity",
+      "type": "piechart",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [
+        {
+          "expr": "sum by (severity) (increase(market_anomalies_by_severity_total[1h]))",
+          "legendFormat": "{{severity}}",
+          "refId": "A"
+        }
+      ],
+      "id": 4
+    },
+    {
+      "title": "Pipeline Lag (seconds)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "targets": [
+        {
+          "expr": "market_pipeline_lag_seconds",
+          "legendFormat": "{{component}} / {{topic}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "id": 5
+    },
+    {
+      "title": "API Latency (p95)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(market_api_request_latency_seconds_bucket[5m])) by (le, endpoint))",
+          "legendFormat": "{{endpoint}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "id": 6
+    },
+    {
+      "title": "MCP Tool Calls",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+      "targets": [
+        {
+          "expr": "sum by (tool) (rate(market_mcp_tool_calls_total[5m]))",
+          "legendFormat": "{{tool}}",
+          "refId": "A"
+        }
+      ],
+      "id": 7
+    },
+    {
+      "title": "Latest Prices",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+      "targets": [
+        {
+          "expr": "market_latest_price",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "id": 8
+    },
+    {
+      "title": "Top Symbols by Volatility",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+      "targets": [
+        {
+          "expr": "topk(10, market_symbol_volatility)",
+          "legendFormat": "{{symbol}}",
+          "refId": "A"
+        }
+      ],
+      "id": 9
+    },
+    {
+      "title": "Related News Count per Anomaly",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+      "targets": [
+        {
+          "expr": "market_anomaly_related_news_count",
+          "legendFormat": "{{symbol}} / {{anomaly_id}}",
+          "refId": "A"
+        }
+      ],
+      "id": 10
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["marketpulse", "kafka", "mcp"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser",
+  "title": "MarketPulse Pipeline",
+  "uid": "marketpulse-main",
+  "version": 1
+}

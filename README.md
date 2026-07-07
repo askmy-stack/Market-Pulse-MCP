@@ -2,7 +2,7 @@
 
 > Real-time market intelligence pipeline and MCP skill server for AI agents.
 
-**Repository:** `kafka-stock-pipeline` · **Project:** MarketPulse MCP
+**Repository:** [askmy-stack/kafka-stock-pipeline](https://github.com/askmy-stack/kafka-stock-pipeline) · **Project:** MarketPulse MCP
 
 MarketPulse MCP transforms streaming market data into agent-ready context. It ingests stock ticks and news through a Kafka-compatible pipeline (Redpanda), computes rolling features, detects anomalies, correlates news within time windows, and exposes everything via a FastAPI REST API and MCP tools — including the hero tool `explain_stock_move`.
 
@@ -15,26 +15,29 @@ MarketPulse MCP transforms streaming market data into agent-ready context. It in
 AI agents need structured, real-time market context — not raw tick feeds. MarketPulse MCP bridges streaming data engineering and agent tooling:
 
 - **Streaming pipeline** — Redpanda topics, validated Pydantic schemas, consumer groups
-- **Intelligence layer** — rolling features, z-score anomalies, news correlation
+- **Intelligence layer** — rolling features, z-score anomalies, news correlation, embeddings
 - **Agent interface** — 13 MCP tools connected to live pipeline data
-- **Portfolio-ready** — Docker Compose, tests, CI, observability
+- **Portfolio-ready** — Docker Compose, Grafana, tests, CI, Terraform & Helm skeletons
 
 ## Architecture
 
 ```
 Producers → Redpanda → Consumers/Processor → PostgreSQL → FastAPI + MCP Server
+                                                              ↓
+                                                    Prometheus → Grafana
 ```
 
 | Service | Purpose |
 |---------|---------|
-| `stock-producer` | Mock stock ticks |
-| `news-producer` | Mock market/company news |
+| `stock-producer` | Stock ticks (mock or yfinance) |
+| `news-producer` | Mock / NewsAPI / Finnhub news |
 | `stock-consumer` | Persist validated ticks |
-| `news-consumer` | Persist validated news |
+| `news-consumer` | Persist news + publish embeddings |
 | `stream-processor` | Features, anomalies, context |
 | `api` | REST API (port 8000) |
 | `mcp-server` | MCP tools for agents |
-| `prometheus` | Metrics scraping |
+| `prometheus` | Metrics scraping (port 9091) |
+| `grafana` | Dashboards (port 3000) |
 
 See [docs/architecture.md](docs/architecture.md) for details.
 
@@ -45,7 +48,10 @@ See [docs/architecture.md](docs/architecture.md) for details.
 - **Rolling features** — returns, volatility, z-score, volume ratio
 - **Anomaly detection** — price z-score + volume spike with severity
 - **News correlation** — time-window matching with sentiment
-- **Context engine** — correlated explanations with disclaimers
+- **News embeddings** — hash or sentence-transformers vectors on `news_embeddings` topic
+- **Real data providers** — yfinance, NewsAPI, Finnhub (optional, env-gated)
+- **API key auth** — optional `API_KEY` env var with `X-API-Key` header
+- **Grafana observability** — auto-provisioned dashboards
 - **Mock data by default** — no API keys required
 
 ## Quickstart
@@ -70,6 +76,21 @@ Wait ~30 seconds for services to initialize, then:
 curl http://localhost:8000/health
 curl http://localhost:8000/symbols
 curl http://localhost:8000/explain/AAPL
+```
+
+**Grafana:** http://localhost:3000 (admin/admin)  
+**Prometheus:** http://localhost:9091  
+**API docs:** http://localhost:8000/docs
+
+### Enable real data (optional)
+
+```bash
+# In .env
+ENABLE_REAL_STOCK_DATA=true   # requires: pip install yfinance
+YFINANCE_ENABLED=true
+ENABLE_REAL_NEWS_DATA=true
+NEWS_API_KEY=your-key
+FINNHUB_API_KEY=your-key
 ```
 
 ### Local development (without Docker)
@@ -101,6 +122,9 @@ make mcp  # Run MCP server standalone
 # Latest quote
 curl http://localhost:8000/quotes/AAPL/latest
 
+# With API key auth (when API_KEY is set)
+curl -H "X-API-Key: your-key" http://localhost:8000/symbols
+
 # Recent anomalies
 curl http://localhost:8000/anomalies
 
@@ -128,18 +152,35 @@ Full reference: [docs/api-reference.md](docs/api-reference.md)
 | `generate_market_brief` | Market-wide brief |
 | ... | [Full list](docs/mcp-tools.md) |
 
+## Deployment
+
+| Method | Path |
+|--------|------|
+| Docker Compose | `docker-compose.yml` (default) |
+| Kubernetes Helm | `deploy/helm/marketpulse/` |
+| AWS Terraform | `deploy/terraform/` |
+| TimescaleDB | Set `POSTGRES_IMAGE=timescale/timescaledb:latest-pg16` |
+
+```bash
+make grafana          # Print observability URLs
+make terraform-plan   # Preview AWS infrastructure
+make helm-install     # Install Helm chart
+```
+
 ## Makefile Commands
 
 | Command | Description |
 |---------|-------------|
 | `make up` | Start full Docker stack |
 | `make down` | Stop and remove volumes |
-| `make produce-stock` | Run mock stock producer |
+| `make produce-stock` | Run stock producer (mock or yfinance) |
 | `make produce-news` | Run mock news producer |
 | `make api` | Start FastAPI dev server |
 | `make mcp` | Start MCP server |
 | `make test` | Run pytest |
 | `make lint` | Run ruff linter |
+| `make grafana` | Show Grafana/Prometheus URLs |
+| `make pre-commit` | Run pre-commit hooks |
 
 ## Testing
 
@@ -147,6 +188,7 @@ Full reference: [docs/api-reference.md](docs/api-reference.md)
 make install
 make test
 make lint
+pre-commit install && pre-commit run --all-files
 ```
 
 ## Roadmap
@@ -170,4 +212,3 @@ The `src/marketpulse/` package is the production implementation.
 ## License
 
 MIT — see [LICENSE](LICENSE)
-

@@ -2,9 +2,19 @@
 
 Base URL: `http://localhost:8000`
 
+## Authentication
+
+When `API_KEY` is set in the environment, all routes except `/health`, `/metrics`, and `/docs` require the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: your-secret-key" http://localhost:8000/symbols
+```
+
+If `API_KEY` is unset (default), authentication is disabled.
+
 ## Health
 
-- `GET /health` — API health check
+- `GET /health` — API health check (no auth required)
 - `GET /pipeline/health` — Pipeline component status
 
 ## Quotes & Features
@@ -40,4 +50,9 @@ Base URL: `http://localhost:8000`
 
 ## Metrics
 
-- `GET /metrics` — Prometheus metrics
+- `GET /metrics` — Prometheus metrics (no auth required)
+
+## Observability
+
+- Grafana: http://localhost:3000 (admin/admin)
+- Prometheus: http://localhost:9091

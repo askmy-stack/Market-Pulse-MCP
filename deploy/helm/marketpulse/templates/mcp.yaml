@@ -1,0 +1,30 @@
+{{- if .Values.mcp.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marketpulse.fullname" . }}-mcp
+  labels:
+    {{- include "marketpulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "marketpulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mcp
+  template:
+    metadata:
+      labels:
+        {{- include "marketpulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mcp
+    spec:
+      containers:
+        - name: mcp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["python", "-m", "marketpulse.mcp.server"]
+          env:
+            - name: MCP_API_BASE_URL
+              value: "http://{{ include "marketpulse.fullname" . }}-api:{{ .Values.api.port }}"
+            - name: POSTGRES_HOST
+              value: {{ .Values.postgres.host | quote }}
+{{- end }}

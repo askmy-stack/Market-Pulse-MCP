@@ -1,6 +1,6 @@
 """MarketPulse MCP — real-time market intelligence pipeline."""
 
-__version__ = "0.1.0"
+__version__ = "0.5.0"
 
 DISCLAIMER = (
     "This analysis is correlation-based market context, not financial advice. "

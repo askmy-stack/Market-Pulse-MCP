@@ -12,6 +12,7 @@ from marketpulse.db.models import (
     MarketBrief,
     MarketContext,
     NewsArticle,
+    NewsEmbedding,
     PipelineHealth,
     StockAnomaly,
     StockFeature,
@@ -94,6 +95,17 @@ class Repository:
         self.session.merge(row)
         return row
 
+    def save_news_embedding(self, event_id: str, payload: dict[str, Any]) -> NewsEmbedding:
+        row = NewsEmbedding(
+            event_id=event_id,
+            embedding_model=payload.get("embedding_model", "hash"),
+            dimension=payload.get("dimension", len(payload.get("embedding", []))),
+            embedding=payload.get("embedding", []),
+            created_at=datetime.utcnow(),
+        )
+        self.session.merge(row)
+        return row
+
     def save_context(self, event: CorrelatedMarketContextEvent) -> MarketContext:
         row = MarketContext(
             event_id=event.event_id,
@@ -163,7 +175,12 @@ class Repository:
         return sorted({r[0] for r in rows})
 
     def get_latest_news(self, limit: int = 20) -> list[NewsArticle]:
-        return self.session.query(NewsArticle).order_by(desc(NewsArticle.published_at)).limit(limit).all()
+        return (
+            self.session.query(NewsArticle)
+            .order_by(desc(NewsArticle.published_at))
+            .limit(limit)
+            .all()
+        )
 
     def get_market_news(self, limit: int = 20) -> list[NewsArticle]:
         return (
@@ -176,7 +193,12 @@ class Repository:
 
     def get_company_news(self, symbol: str, limit: int = 20) -> list[NewsArticle]:
         symbol = symbol.upper()
-        rows = self.session.query(NewsArticle).order_by(desc(NewsArticle.published_at)).limit(200).all()
+        rows = (
+            self.session.query(NewsArticle)
+            .order_by(desc(NewsArticle.published_at))
+            .limit(200)
+            .all()
+        )
         return [r for r in rows if symbol in (r.symbols or [])][:limit]
 
     def get_news_sentiment(self, symbol: str) -> dict[str, Any]:
@@ -188,11 +210,18 @@ class Repository:
             "symbol": symbol.upper(),
             "avg_sentiment": sum(scores) / len(scores),
             "count": len(articles),
-            "articles": [{"headline": a.headline, "sentiment": a.sentiment_score} for a in articles[:10]],
+            "articles": [
+                {"headline": a.headline, "sentiment": a.sentiment_score} for a in articles[:10]
+            ],
         }
 
     def get_anomalies(self, limit: int = 50) -> list[StockAnomaly]:
-        return self.session.query(StockAnomaly).order_by(desc(StockAnomaly.timestamp)).limit(limit).all()
+        return (
+            self.session.query(StockAnomaly)
+            .order_by(desc(StockAnomaly.timestamp))
+            .limit(limit)
+            .all()
+        )
 
     def get_anomaly(self, anomaly_id: str) -> StockAnomaly | None:
         return self.session.query(StockAnomaly).filter(StockAnomaly.event_id == anomaly_id).first()
@@ -223,4 +252,9 @@ class Repository:
         return [r for r in rows if r.published_at >= cutoff]
 
     def get_pipeline_health(self) -> list[PipelineHealth]:
-        return self.session.query(PipelineHealth).order_by(desc(PipelineHealth.timestamp)).limit(20).all()
+        return (
+            self.session.query(PipelineHealth)
+            .order_by(desc(PipelineHealth.timestamp))
+            .limit(20)
+            .all()
+        )

@@ -60,4 +60,6 @@ class FeatureStore:
         if not window or not window.ready:
             return None
         features = window.compute_all(window.prices[-1], window.volumes[-1])
-        return StockFeatureEvent(symbol=symbol.upper(), **features, window_size=self._settings.rolling_window_size)
+        return StockFeatureEvent(
+            symbol=symbol.upper(), **features, window_size=self._settings.rolling_window_size
+        )

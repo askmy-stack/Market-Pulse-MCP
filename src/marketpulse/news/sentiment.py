@@ -2,8 +2,30 @@
 
 from __future__ import annotations
 
-POSITIVE = {"beat", "upgrade", "growth", "rally", "jump", "strong", "boost", "gain", "surge", "profit"}
-NEGATIVE = {"miss", "downgrade", "scrutiny", "slip", "fall", "weak", "loss", "decline", "cut", "risk"}
+POSITIVE = {
+    "beat",
+    "upgrade",
+    "growth",
+    "rally",
+    "jump",
+    "strong",
+    "boost",
+    "gain",
+    "surge",
+    "profit",
+}
+NEGATIVE = {
+    "miss",
+    "downgrade",
+    "scrutiny",
+    "slip",
+    "fall",
+    "weak",
+    "loss",
+    "decline",
+    "cut",
+    "risk",
+}
 
 
 def analyze_sentiment(text: str) -> float:

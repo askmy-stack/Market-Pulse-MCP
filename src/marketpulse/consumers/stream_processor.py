@@ -20,9 +20,11 @@ from marketpulse.kafka.topics import (
 )
 from marketpulse.observability.logging import get_logger, setup_logging
 from marketpulse.observability.metrics import (
-    ANOMALIES_DETECTED,
     FEATURES_COMPUTED,
+    PIPELINE_LAG,
     PROCESSING_LATENCY,
+    SYMBOL_VOLATILITY,
+    record_anomaly,
 )
 from marketpulse.schemas.events import PipelineHealthEvent, StockTickEvent
 
@@ -62,17 +64,25 @@ def run() -> None:
                 features = store.process_tick(tick)
                 publish_event(producer, STOCK_FEATURES, features.symbol, features)
                 FEATURES_COMPUTED.labels(symbol=features.symbol).inc()
+                SYMBOL_VOLATILITY.labels(symbol=features.symbol).set(features.volatility)
 
                 anomaly = detector.detect(features)
                 if anomaly:
                     publish_event(producer, STOCK_ANOMALIES, anomaly.symbol, anomaly)
                     repo.save_anomaly(anomaly)
-                    ANOMALIES_DETECTED.labels(symbol=anomaly.symbol, severity=anomaly.severity.value).inc()
+                    record_anomaly(
+                        anomaly.symbol,
+                        anomaly.severity.value,
+                        len(anomaly.related_news_ids),
+                        anomaly.event_id,
+                    )
 
                     engine = MarketContextEngine(repo)
                     context = engine.build_context(anomaly.symbol, anomaly)
                     publish_event(producer, MARKET_CONTEXT, context.symbol, context)
-                    logger.info("anomaly_detected", symbol=anomaly.symbol, severity=anomaly.severity.value)
+                    logger.info(
+                        "anomaly_detected", symbol=anomaly.symbol, severity=anomaly.severity.value
+                    )
 
                 repo.save_health(
                     PipelineHealthEvent(
@@ -83,18 +93,24 @@ def run() -> None:
                     )
                 )
             producer.flush(1)
-            PROCESSING_LATENCY.labels(component="stream-processor").observe(time.time() - start)
+            lag = time.time() - start
+            PIPELINE_LAG.labels(component="stream-processor", topic=STOCK_TICKS).set(lag)
+            PROCESSING_LATENCY.labels(component="stream-processor").observe(lag)
         except Exception as exc:
             logger.error("processor_failed", error=str(exc))
             with get_db() as session:
                 Repository(session).save_health(
-                    PipelineHealthEvent(component="stream-processor", status="degraded", message=str(exc))
+                    PipelineHealthEvent(
+                        component="stream-processor", status="degraded", message=str(exc)
+                    )
                 )
             publish_event(
                 producer,
                 PIPELINE_HEALTH,
                 "stream-processor",
-                PipelineHealthEvent(component="stream-processor", status="degraded", message=str(exc)),
+                PipelineHealthEvent(
+                    component="stream-processor", status="degraded", message=str(exc)
+                ),
             )
             producer.flush(1)
 

@@ -1,0 +1,92 @@
+{{- if .Values.consumers.stock.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marketpulse.fullname" . }}-stock-consumer
+  labels:
+    {{- include "marketpulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: stock-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "marketpulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: stock-consumer
+  template:
+    metadata:
+      labels:
+        {{- include "marketpulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: stock-consumer
+    spec:
+      containers:
+        - name: stock-consumer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["python", "-m", "marketpulse.consumers.stock_consumer"]
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafka.bootstrapServers | quote }}
+            - name: POSTGRES_HOST
+              value: {{ .Values.postgres.host | quote }}
+{{- end }}
+---
+{{- if .Values.consumers.news.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marketpulse.fullname" . }}-news-consumer
+  labels:
+    {{- include "marketpulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: news-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "marketpulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: news-consumer
+  template:
+    metadata:
+      labels:
+        {{- include "marketpulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: news-consumer
+    spec:
+      containers:
+        - name: news-consumer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["python", "-m", "marketpulse.consumers.news_consumer"]
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafka.bootstrapServers | quote }}
+            - name: POSTGRES_HOST
+              value: {{ .Values.postgres.host | quote }}
+{{- end }}
+---
+{{- if .Values.consumers.processor.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marketpulse.fullname" . }}-processor
+  labels:
+    {{- include "marketpulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: processor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "marketpulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: processor
+  template:
+    metadata:
+      labels:
+        {{- include "marketpulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: processor
+    spec:
+      containers:
+        - name: processor
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["python", "-m", "marketpulse.consumers.stream_processor"]
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafka.bootstrapServers | quote }}
+            - name: POSTGRES_HOST
+              value: {{ .Values.postgres.host | quote }}
+{{- end }}

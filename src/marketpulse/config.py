@@ -17,15 +17,24 @@ class Settings(BaseSettings):
     postgres_db: str = "marketpulse"
     postgres_user: str = "marketpulse"
     postgres_password: str = "marketpulse"
+    use_timescaledb: bool = False
 
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+    api_key: str | None = None
     log_level: str = "INFO"
 
     enable_real_stock_data: bool = False
+    yfinance_enabled: bool = False
+    enable_real_news_data: bool = False
+    news_api_key: str | None = None
+    finnhub_api_key: str | None = None
+    news_provider: str = "mock"  # mock | newsapi | finnhub
+
     mock_symbols: str = "AAPL,MSFT,GOOGL,AMZN,TSLA,NVDA,META,JPM"
     mock_tick_interval_seconds: float = 1.0
     mock_news_interval_seconds: float = 5.0
+    yfinance_poll_interval_seconds: float = 5.0
 
     rolling_window_size: int = 20
     anomaly_zscore_threshold: float = 2.5
@@ -48,6 +57,18 @@ class Settings(BaseSettings):
     @property
     def symbol_list(self) -> list[str]:
         return [s.strip().upper() for s in self.mock_symbols.split(",") if s.strip()]
+
+    @property
+    def real_stock_enabled(self) -> bool:
+        return self.enable_real_stock_data or self.yfinance_enabled
+
+    @property
+    def effective_news_provider(self) -> str:
+        if self.enable_real_news_data and self.news_api_key:
+            return "newsapi"
+        if self.finnhub_api_key:
+            return "finnhub"
+        return self.news_provider if self.news_provider != "mock" else "mock"
 
 
 @lru_cache

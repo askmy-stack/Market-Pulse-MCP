@@ -1,0 +1,61 @@
+{{- if .Values.producers.stock.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marketpulse.fullname" . }}-stock-producer
+  labels:
+    {{- include "marketpulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: stock-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "marketpulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: stock-producer
+  template:
+    metadata:
+      labels:
+        {{- include "marketpulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: stock-producer
+    spec:
+      containers:
+        - name: stock-producer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["python", "-m", "marketpulse.producers.stock_producer"]
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafka.bootstrapServers | quote }}
+            - name: ENABLE_REAL_STOCK_DATA
+              value: {{ .Values.producers.stock.enableRealStockData | quote }}
+{{- end }}
+---
+{{- if .Values.producers.news.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marketpulse.fullname" . }}-news-producer
+  labels:
+    {{- include "marketpulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: news-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "marketpulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: news-producer
+  template:
+    metadata:
+      labels:
+        {{- include "marketpulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: news-producer
+    spec:
+      containers:
+        - name: news-producer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["python", "-m", "marketpulse.producers.mock_news_producer"]
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafka.bootstrapServers | quote }}
+            - name: ENABLE_REAL_NEWS_DATA
+              value: {{ .Values.producers.news.enableRealNewsData | quote }}
+{{- end }}

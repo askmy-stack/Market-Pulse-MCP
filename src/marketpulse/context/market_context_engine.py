@@ -13,7 +13,9 @@ class MarketContextEngine:
         self.repo = repo
         self.correlator = NewsCorrelator()
 
-    def build_context(self, symbol: str, anomaly: StockAnomalyEvent | None = None) -> CorrelatedMarketContextEvent:
+    def build_context(
+        self, symbol: str, anomaly: StockAnomalyEvent | None = None
+    ) -> CorrelatedMarketContextEvent:
         symbol = symbol.upper()
         features = self.repo.get_latest_features(symbol)
         price_change = (features.return_1m * 100) if features else 0.0
@@ -28,7 +30,9 @@ class MarketContextEngine:
             anomalies[0].related_news_ids = related_ids
 
         sentiment_summary = self.correlator.build_sentiment_summary(related_ids, news)
-        explanation = self._build_explanation(symbol, price_change, anomalies, related_ids, sentiment_summary)
+        explanation = self._build_explanation(
+            symbol, price_change, anomalies, related_ids, sentiment_summary
+        )
 
         confidence = min(0.9, 0.3 + 0.1 * len(related_ids) + 0.1 * len(anomaly_ids))
 
@@ -58,7 +62,9 @@ class MarketContextEngine:
             f"{symbol} {direction} approximately {abs(price_change):.2f}% in the recent window.",
         ]
         if anomalies:
-            parts.append(f"Detected {len(anomalies)} anomal{'y' if len(anomalies)==1 else 'ies'}: {anomalies[0].description}.")
+            parts.append(
+                f"Detected {len(anomalies)} anomal{'y' if len(anomalies) == 1 else 'ies'}: {anomalies[0].description}."
+            )
         if news_ids:
             parts.append(f"Found {len(news_ids)} correlated news item(s). {sentiment}")
         else:

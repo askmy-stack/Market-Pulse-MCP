@@ -9,7 +9,12 @@ from marketpulse.db.session import get_db, init_db
 from marketpulse.kafka.client import create_consumer, parse_message
 from marketpulse.kafka.topics import STOCK_TICKS
 from marketpulse.observability.logging import get_logger, setup_logging
-from marketpulse.observability.metrics import TICKS_PROCESSED
+from marketpulse.observability.metrics import (
+    LATEST_PRICE,
+    PIPELINE_LAG,
+    STOCK_TICKS_INGESTED,
+    TICKS_PROCESSED,
+)
 from marketpulse.schemas.events import PipelineHealthEvent, StockTickEvent
 
 logger = get_logger(__name__)
@@ -43,9 +48,18 @@ def run() -> None:
                 repo = Repository(session)
                 repo.save_tick(event)
                 repo.save_health(
-                    PipelineHealthEvent(component="stock-consumer", status="healthy", message="tick processed")
+                    PipelineHealthEvent(
+                        component="stock-consumer", status="healthy", message="tick processed"
+                    )
                 )
             TICKS_PROCESSED.labels(symbol=event.symbol).inc()
+            STOCK_TICKS_INGESTED.labels(symbol=event.symbol).inc()
+            LATEST_PRICE.labels(symbol=event.symbol).set(event.price)
+            if msg.timestamp()[1] is not None:
+                import time
+
+                lag = time.time() - (msg.timestamp()[1] / 1000.0)
+                PIPELINE_LAG.labels(component="stock-consumer", topic=STOCK_TICKS).set(max(0, lag))
             logger.info("tick_saved", symbol=event.symbol, price=event.price)
         except Exception as exc:
             logger.error("tick_processing_failed", error=str(exc))

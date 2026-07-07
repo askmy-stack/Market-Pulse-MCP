@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "marketpulse-mcp"
-version = "0.1.0"
+version = "0.5.0"
 description = "MarketPulse MCP — real-time market intelligence pipeline and MCP skill server for AI agents"
 readme = "README.md"
 license = "MIT"
@@ -35,17 +35,24 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+real-data = [
+    "yfinance>=0.2.50",
+]
+embeddings = [
+    "sentence-transformers>=3.0.0",
+]
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
     "ruff>=0.8.0",
+    "pre-commit>=4.0.0",
 ]
 
 [project.scripts]
 marketpulse-api = "marketpulse.api.app:main"
 marketpulse-mcp = "marketpulse.mcp.server:main"
-marketpulse-produce-stock = "marketpulse.producers.mock_stock_producer:main"
+marketpulse-produce-stock = "marketpulse.producers.stock_producer:main"
 marketpulse-produce-news = "marketpulse.producers.mock_news_producer:main"
 marketpulse-stock-consumer = "marketpulse.consumers.stock_consumer:main"
 marketpulse-news-consumer = "marketpulse.consumers.news_consumer:main"

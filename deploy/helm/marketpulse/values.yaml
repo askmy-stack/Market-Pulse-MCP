@@ -1,0 +1,55 @@
+replicaCount: 1
+
+image:
+  repository: marketpulse
+  tag: latest
+  pullPolicy: IfNotPresent
+
+kafka:
+  bootstrapServers: redpanda:9092
+
+postgres:
+  host: postgres
+  port: 5432
+  db: marketpulse
+  user: marketpulse
+  password: marketpulse
+
+api:
+  enabled: true
+  port: 8000
+  apiKey: ""
+
+mcp:
+  enabled: true
+
+producers:
+  stock:
+    enabled: true
+    enableRealStockData: false
+  news:
+    enabled: true
+    enableRealNewsData: false
+
+consumers:
+  stock:
+    enabled: true
+  news:
+    enabled: true
+  processor:
+    enabled: true
+
+prometheus:
+  enabled: true
+  port: 9090
+
+grafana:
+  enabled: true
+  port: 3000
+  adminPassword: admin
+
+resources: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

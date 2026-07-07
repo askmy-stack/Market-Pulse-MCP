@@ -30,14 +30,22 @@ class RollingWindow:
         prices = list(self.prices)
         ret_1m = (prices[-1] - prices[-2]) / prices[-2] if prices[-2] else 0.0
         lookback = min(5, len(prices) - 1)
-        ret_5m = (prices[-1] - prices[-1 - lookback]) / prices[-1 - lookback] if prices[-1 - lookback] else 0.0
+        ret_5m = (
+            (prices[-1] - prices[-1 - lookback]) / prices[-1 - lookback]
+            if prices[-1 - lookback]
+            else 0.0
+        )
         return ret_1m, ret_5m
 
     def compute_volatility(self) -> float:
         if len(self.prices) < 3:
             return 0.0
         prices = list(self.prices)
-        returns = [(prices[i] - prices[i - 1]) / prices[i - 1] for i in range(1, len(prices)) if prices[i - 1]]
+        returns = [
+            (prices[i] - prices[i - 1]) / prices[i - 1]
+            for i in range(1, len(prices))
+            if prices[i - 1]
+        ]
         if not returns:
             return 0.0
         mean = sum(returns) / len(returns)

@@ -2,21 +2,24 @@
 
 from __future__ import annotations
 
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from prometheus_client import make_asgi_app
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from marketpulse import DISCLAIMER, __version__
+from marketpulse.api.auth import APIKeyMiddleware
 from marketpulse.config import get_settings
 from marketpulse.context.brief_generator import BriefGenerator
 from marketpulse.context.explanation import explain_stock_move
 from marketpulse.db.repository import Repository
 from marketpulse.db.session import get_db, init_db
 from marketpulse.observability.logging import setup_logging
-from marketpulse.observability.metrics import start_metrics_server
+from marketpulse.observability.metrics import API_REQUEST_LATENCY, start_metrics_server
 
 
 def _serialize(obj: Any) -> dict:
@@ -25,6 +28,17 @@ def _serialize(obj: Any) -> dict:
     if hasattr(obj, "__dict__"):
         return {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
     return dict(obj)
+
+
+class LatencyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        endpoint = request.url.path
+        API_REQUEST_LATENCY.labels(method=request.method, endpoint=endpoint).observe(
+            time.perf_counter() - start
+        )
+        return response
 
 
 def create_app() -> FastAPI:
@@ -44,6 +58,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.add_middleware(LatencyMiddleware)
+    app.add_middleware(APIKeyMiddleware)
+
     if settings.metrics_enabled:
         app.mount("/metrics", make_asgi_app())
 
@@ -57,7 +74,12 @@ def create_app() -> FastAPI:
             rows = Repository(session).get_pipeline_health()
         return {
             "components": [
-                {"component": r.component, "status": r.status, "timestamp": r.timestamp.isoformat(), "message": r.message}
+                {
+                    "component": r.component,
+                    "status": r.status,
+                    "timestamp": r.timestamp.isoformat(),
+                    "message": r.message,
+                }
                 for r in rows
             ]
         }
@@ -179,7 +201,12 @@ def main() -> None:
     import uvicorn
 
     settings = get_settings()
-    uvicorn.run("marketpulse.api.app:create_app", factory=True, host=settings.api_host, port=settings.api_port)
+    uvicorn.run(
+        "marketpulse.api.app:create_app",
+        factory=True,
+        host=settings.api_host,
+        port=settings.api_port,
+    )
 
 
 if __name__ == "__main__":
