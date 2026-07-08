@@ -3,13 +3,13 @@
 
 
 from __future__ import annotations
+
 import importlib
 from unittest.mock import MagicMock, patch
+
 import pytest
+
 from marketpulse.observability.metrics import MCP_TOOL_CALLS
-
-
-
 
 
 @pytest.fixture(scope="module")
