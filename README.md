@@ -2,7 +2,7 @@
 
 > Real-time market intelligence pipeline and MCP skill server for AI agents.
 
-**Repository:** [askmy-stack/kafka-stock-pipeline](https://github.com/askmy-stack/kafka-stock-pipeline) · **Project:** MarketPulse MCP
+**Repository:** [askmy-stack/Market-Pulse-MCP](https://github.com/askmy-stack/Market-Pulse-MCP) · **Project:** MarketPulse MCP
 
 MarketPulse MCP transforms streaming market data into agent-ready context. It ingests stock ticks and news through a Kafka-compatible pipeline (Redpanda), computes rolling features, detects anomalies, correlates news within time windows, and exposes everything via a FastAPI REST API and MCP tools — including the hero tool `explain_stock_move`.
 
@@ -64,8 +64,8 @@ See [docs/architecture.md](docs/architecture.md) for details.
 ### Run the full stack
 
 ```bash
-git clone https://github.com/askmy-stack/kafka-stock-pipeline.git
-cd kafka-stock-pipeline
+git clone https://github.com/askmy-stack/Market-Pulse-MCP.git
+cd Market-Pulse-MCP
 cp .env.example .env
 make up
 ```
