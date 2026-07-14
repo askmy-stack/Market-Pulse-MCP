@@ -5,8 +5,8 @@ Thank you for your interest in contributing!
 ## Development setup
 
 ```bash
-git clone https://github.com/askmy-stack/kafka-stock-pipeline.git
-cd kafka-stock-pipeline
+git clone https://github.com/askmy-stack/Market-Pulse-MCP.git
+cd Market-Pulse-MCP
 make install
 cp .env.example .env
 make up
@@ -49,4 +49,4 @@ make lint
 
 ## Good First Issues
 
-Check [GitHub Issues](https://github.com/askmy-stack/kafka-stock-pipeline/issues?q=label%3A%22good+first+issue%22) for beginner-friendly tasks.
+Check [GitHub Issues](https://github.com/askmy-stack/Market-Pulse-MCP/issues?q=label%3A%22good+first+issue%22) for beginner-friendly tasks.
