@@ -30,6 +30,16 @@ def _serialize(obj: Any) -> dict:
     return dict(obj)
 
 
+def _paginate(items: list, offset: int, limit: int) -> tuple[dict, list]:
+    has_next = len(items) > limit
+    metadata = {
+        "offset": offset,
+        "limit": limit,
+        "next_offset": offset + limit if has_next else None,
+    }
+    return metadata, items[:limit]
+
+
 class LatencyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
@@ -101,10 +111,15 @@ def create_app() -> FastAPI:
             return _serialize(quote)
 
     @app.get("/quotes/{symbol}/recent")
-    def recent_quotes(symbol: str, limit: int = 50) -> dict:
+    def recent_quotes(symbol: str, offset: int = 0, limit: int = 20) -> dict:
         with get_db() as session:
-            ticks = Repository(session).get_recent_ticks(symbol, limit)
-        return {"symbol": symbol.upper(), "ticks": [_serialize(t) for t in ticks]}
+            ticks = Repository(session).get_recent_ticks(symbol, limit + 1, offset)
+            metadata, ticks = _paginate(ticks, offset, limit)
+            return {
+                "symbol": symbol.upper(),
+                "ticks": [_serialize(t) for t in ticks],
+                "metadata": metadata,
+            }
 
     @app.get("/features/{symbol}")
     def get_features(symbol: str) -> dict:
@@ -115,10 +130,14 @@ def create_app() -> FastAPI:
         return _serialize(features)
 
     @app.get("/news/latest")
-    def news_latest(limit: int = 20) -> dict:
+    def news_latest(offset: int = 0, limit: int = 20) -> dict:
         with get_db() as session:
-            articles = Repository(session).get_latest_news(limit)
-        return {"articles": [_serialize(a) for a in articles]}
+            articles = Repository(session).get_latest_news(limit + 1, offset)
+            metadata, articles = _paginate(articles, offset, limit)
+            return {
+                "articles": [_serialize(a) for a in articles],
+                "metadata": metadata,
+            }
 
     @app.get("/news/market")
     def news_market(limit: int = 20) -> dict:
@@ -138,10 +157,14 @@ def create_app() -> FastAPI:
             return Repository(session).get_news_sentiment(symbol)
 
     @app.get("/anomalies")
-    def list_anomalies(limit: int = 50) -> dict:
+    def list_anomalies(offset: int = 0, limit: int = 20) -> dict:
         with get_db() as session:
-            rows = Repository(session).get_anomalies(limit)
-        return {"anomalies": [_serialize(a) for a in rows]}
+            rows = Repository(session).get_anomalies(limit + 1, offset)
+            metadata, rows = _paginate(rows, offset, limit)
+            return {
+                "anomalies": [_serialize(a) for a in rows],
+                "metadata": metadata,
+            }
 
     @app.get("/anomalies/{anomaly_id}")
     def get_anomaly(anomaly_id: str) -> dict:
