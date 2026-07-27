@@ -153,11 +153,12 @@ class Repository:
             .first()
         )
 
-    def get_recent_ticks(self, symbol: str, limit: int = 50) -> list[StockTick]:
+    def get_recent_ticks(self, symbol: str, limit: int = 50, offset: int = 0) -> list[StockTick]:
         return (
             self.session.query(StockTick)
             .filter(StockTick.symbol == symbol.upper())
             .order_by(desc(StockTick.timestamp))
+            .offset(offset)
             .limit(limit)
             .all()
         )
@@ -174,10 +175,11 @@ class Repository:
         rows = self.session.query(StockTick.symbol).distinct().all()
         return sorted({r[0] for r in rows})
 
-    def get_latest_news(self, limit: int = 20) -> list[NewsArticle]:
+    def get_latest_news(self, limit: int = 20, offset: int = 0) -> list[NewsArticle]:
         return (
             self.session.query(NewsArticle)
             .order_by(desc(NewsArticle.published_at))
+            .offset(offset)
             .limit(limit)
             .all()
         )
@@ -215,10 +217,11 @@ class Repository:
             ],
         }
 
-    def get_anomalies(self, limit: int = 50) -> list[StockAnomaly]:
+    def get_anomalies(self, limit: int = 50, offset: int = 0) -> list[StockAnomaly]:
         return (
             self.session.query(StockAnomaly)
             .order_by(desc(StockAnomaly.timestamp))
+            .offset(offset)
             .limit(limit)
             .all()
         )
