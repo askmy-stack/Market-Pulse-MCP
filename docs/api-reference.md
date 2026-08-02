@@ -12,6 +12,10 @@ curl -H "X-API-Key: your-secret-key" http://localhost:8000/symbols
 
 If `API_KEY` is unset (default), authentication is disabled.
 
+API routes (except `/health`) are rate limited per IP via slowapi
+(`MARKETPULSE_RATE_LIMIT`, default `60/minute`). List endpoints accept
+`limit` up to **500** (`Query(..., le=500)`); larger values return 422.
+
 ## Health
 
 - `GET /health` — API health check (no auth required)
