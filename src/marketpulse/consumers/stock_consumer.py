@@ -6,7 +6,8 @@ import signal
 
 from marketpulse.db.repository import Repository
 from marketpulse.db.session import get_db, init_db
-from marketpulse.kafka.client import create_consumer, parse_message
+from marketpulse.kafka.client import create_consumer, create_producer, parse_message
+from marketpulse.kafka.dlq import route_poison_message
 from marketpulse.kafka.topics import STOCK_TICKS
 from marketpulse.observability.logging import get_logger, setup_logging
 from marketpulse.observability.metrics import (
@@ -30,6 +31,7 @@ def run() -> None:
     setup_logging()
     init_db()
     consumer = create_consumer(group_id="stock-consumer", topics=[STOCK_TICKS])
+    producer = create_producer()
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
     logger.info("stock_consumer_started")
@@ -63,6 +65,8 @@ def run() -> None:
             logger.info("tick_saved", symbol=event.symbol, price=event.price)
         except Exception as exc:
             logger.error("tick_processing_failed", error=str(exc))
+            route_poison_message(producer, msg, component="stock-consumer", error=exc)
+            producer.flush(1)
 
     consumer.close()
 

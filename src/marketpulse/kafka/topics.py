@@ -9,6 +9,7 @@ NEWS_EMBEDDINGS = "news_embeddings"
 MARKET_CONTEXT = "market_context"
 MARKET_BRIEFS = "market_briefs"
 PIPELINE_HEALTH = "pipeline_health"
+PIPELINE_DLQ = "pipeline_dlq"
 
 ALL_TOPICS = [
     STOCK_TICKS,
@@ -20,4 +21,5 @@ ALL_TOPICS = [
     MARKET_CONTEXT,
     MARKET_BRIEFS,
     PIPELINE_HEALTH,
+    PIPELINE_DLQ,
 ]

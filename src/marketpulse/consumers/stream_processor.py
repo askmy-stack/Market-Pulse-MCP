@@ -11,6 +11,7 @@ from marketpulse.db.repository import Repository
 from marketpulse.db.session import get_db, init_db
 from marketpulse.features.feature_store import FeatureStore
 from marketpulse.kafka.client import create_consumer, create_producer, parse_message, publish_event
+from marketpulse.kafka.dlq import route_poison_message
 from marketpulse.kafka.topics import (
     MARKET_CONTEXT,
     PIPELINE_HEALTH,
@@ -98,6 +99,7 @@ def run() -> None:
             PROCESSING_LATENCY.labels(component="stream-processor").observe(lag)
         except Exception as exc:
             logger.error("processor_failed", error=str(exc))
+            route_poison_message(producer, msg, component="stream-processor", error=exc)
             with get_db() as session:
                 Repository(session).save_health(
                     PipelineHealthEvent(
