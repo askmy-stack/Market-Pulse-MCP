@@ -6,13 +6,16 @@ import time
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from prometheus_client import make_asgi_app
 from pydantic import BaseModel
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from marketpulse import DISCLAIMER, __version__
 from marketpulse.api.auth import APIKeyMiddleware
+from marketpulse.api.rate_limit import MAX_QUERY_LIMIT, api_rate_limit, limiter
 from marketpulse.config import get_settings
 from marketpulse.context.brief_generator import BriefGenerator
 from marketpulse.context.explanation import explain_stock_move
@@ -68,6 +71,8 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(LatencyMiddleware)
     app.add_middleware(APIKeyMiddleware)
 
@@ -79,7 +84,8 @@ def create_app() -> FastAPI:
         return {"status": "ok", "service": "marketpulse-api", "version": __version__}
 
     @app.get("/pipeline/health")
-    def pipeline_health() -> dict:
+    @limiter.limit(api_rate_limit)
+    def pipeline_health(request: Request, response: Response) -> dict:
         with get_db() as session:
             rows = Repository(session).get_pipeline_health()
         return {
@@ -95,7 +101,8 @@ def create_app() -> FastAPI:
         }
 
     @app.get("/symbols")
-    def list_symbols() -> dict:
+    @limiter.limit(api_rate_limit)
+    def list_symbols(request: Request, response: Response) -> dict:
         with get_db() as session:
             symbols = Repository(session).get_symbols()
         if not symbols:
@@ -103,7 +110,8 @@ def create_app() -> FastAPI:
         return {"symbols": symbols}
 
     @app.get("/quotes/{symbol}/latest")
-    def latest_quote(symbol: str) -> dict:
+    @limiter.limit(api_rate_limit)
+    def latest_quote(symbol: str, request: Request, response: Response) -> dict:
         with get_db() as session:
             quote = Repository(session).get_latest_quote(symbol)
             if not quote:
@@ -111,7 +119,14 @@ def create_app() -> FastAPI:
             return _serialize(quote)
 
     @app.get("/quotes/{symbol}/recent")
-    def recent_quotes(symbol: str, offset: int = 0, limit: int = 20) -> dict:
+    @limiter.limit(api_rate_limit)
+    def recent_quotes(
+        symbol: str,
+        request: Request,
+        response: Response,
+        offset: int = Query(0, ge=0),
+        limit: int = Query(20, ge=1, le=MAX_QUERY_LIMIT),
+    ) -> dict:
         with get_db() as session:
             ticks = Repository(session).get_recent_ticks(symbol, limit + 1, offset)
             metadata, ticks = _paginate(ticks, offset, limit)
@@ -122,7 +137,8 @@ def create_app() -> FastAPI:
             }
 
     @app.get("/features/{symbol}")
-    def get_features(symbol: str) -> dict:
+    @limiter.limit(api_rate_limit)
+    def get_features(symbol: str, request: Request, response: Response) -> dict:
         with get_db() as session:
             features = Repository(session).get_latest_features(symbol)
         if not features:
@@ -130,7 +146,13 @@ def create_app() -> FastAPI:
         return _serialize(features)
 
     @app.get("/news/latest")
-    def news_latest(offset: int = 0, limit: int = 20) -> dict:
+    @limiter.limit(api_rate_limit)
+    def news_latest(
+        request: Request,
+        response: Response,
+        offset: int = Query(0, ge=0),
+        limit: int = Query(20, ge=1, le=MAX_QUERY_LIMIT),
+    ) -> dict:
         with get_db() as session:
             articles = Repository(session).get_latest_news(limit + 1, offset)
             metadata, articles = _paginate(articles, offset, limit)
@@ -140,24 +162,42 @@ def create_app() -> FastAPI:
             }
 
     @app.get("/news/market")
-    def news_market(limit: int = 20) -> dict:
+    @limiter.limit(api_rate_limit)
+    def news_market(
+        request: Request,
+        response: Response,
+        limit: int = Query(20, ge=1, le=MAX_QUERY_LIMIT),
+    ) -> dict:
         with get_db() as session:
             articles = Repository(session).get_market_news(limit)
         return {"articles": [_serialize(a) for a in articles]}
 
     @app.get("/news/company/{symbol}")
-    def news_company(symbol: str, limit: int = 20) -> dict:
+    @limiter.limit(api_rate_limit)
+    def news_company(
+        symbol: str,
+        request: Request,
+        response: Response,
+        limit: int = Query(20, ge=1, le=MAX_QUERY_LIMIT),
+    ) -> dict:
         with get_db() as session:
             articles = Repository(session).get_company_news(symbol, limit)
         return {"symbol": symbol.upper(), "articles": [_serialize(a) for a in articles]}
 
     @app.get("/news/sentiment/{symbol}")
-    def news_sentiment(symbol: str) -> dict:
+    @limiter.limit(api_rate_limit)
+    def news_sentiment(symbol: str, request: Request, response: Response) -> dict:
         with get_db() as session:
             return Repository(session).get_news_sentiment(symbol)
 
     @app.get("/anomalies")
-    def list_anomalies(offset: int = 0, limit: int = 20) -> dict:
+    @limiter.limit(api_rate_limit)
+    def list_anomalies(
+        request: Request,
+        response: Response,
+        offset: int = Query(0, ge=0),
+        limit: int = Query(20, ge=1, le=MAX_QUERY_LIMIT),
+    ) -> dict:
         with get_db() as session:
             rows = Repository(session).get_anomalies(limit + 1, offset)
             metadata, rows = _paginate(rows, offset, limit)
@@ -167,7 +207,8 @@ def create_app() -> FastAPI:
             }
 
     @app.get("/anomalies/{anomaly_id}")
-    def get_anomaly(anomaly_id: str) -> dict:
+    @limiter.limit(api_rate_limit)
+    def get_anomaly(anomaly_id: str, request: Request, response: Response) -> dict:
         with get_db() as session:
             row = Repository(session).get_anomaly(anomaly_id)
         if not row:
@@ -175,13 +216,20 @@ def create_app() -> FastAPI:
         return _serialize(row)
 
     @app.get("/anomalies/symbol/{symbol}")
-    def anomalies_by_symbol(symbol: str, limit: int = 20) -> dict:
+    @limiter.limit(api_rate_limit)
+    def anomalies_by_symbol(
+        symbol: str,
+        request: Request,
+        response: Response,
+        limit: int = Query(20, ge=1, le=MAX_QUERY_LIMIT),
+    ) -> dict:
         with get_db() as session:
             rows = Repository(session).get_anomalies_for_symbol(symbol, limit)
         return {"symbol": symbol.upper(), "anomalies": [_serialize(a) for a in rows]}
 
     @app.get("/context/{symbol}")
-    def get_context(symbol: str) -> dict:
+    @limiter.limit(api_rate_limit)
+    def get_context(symbol: str, request: Request, response: Response) -> dict:
         with get_db() as session:
             ctx = Repository(session).get_latest_context(symbol)
         if not ctx:
@@ -189,13 +237,15 @@ def create_app() -> FastAPI:
         return _serialize(ctx)
 
     @app.get("/context/{symbol}/anomalies")
-    def context_anomalies(symbol: str) -> dict:
+    @limiter.limit(api_rate_limit)
+    def context_anomalies(symbol: str, request: Request, response: Response) -> dict:
         with get_db() as session:
             rows = Repository(session).get_context_anomalies(symbol)
         return {"symbol": symbol.upper(), "anomalies": [_serialize(a) for a in rows]}
 
     @app.get("/explain/{symbol}")
-    def explain(symbol: str) -> dict:
+    @limiter.limit(api_rate_limit)
+    def explain(symbol: str, request: Request, response: Response) -> dict:
         with get_db() as session:
             return explain_stock_move(Repository(session), symbol)
 
@@ -203,13 +253,15 @@ def create_app() -> FastAPI:
         symbols: list[str] | None = None
 
     @app.post("/brief/market")
-    def brief_market() -> dict:
+    @limiter.limit(api_rate_limit)
+    def brief_market(request: Request, response: Response) -> dict:
         with get_db() as session:
             brief = BriefGenerator(Repository(session)).generate_market_brief()
         return _serialize(brief)
 
     @app.post("/brief/symbol")
-    def brief_symbol(body: BriefRequest) -> dict:
+    @limiter.limit(api_rate_limit)
+    def brief_symbol(body: BriefRequest, request: Request, response: Response) -> dict:
         if not body.symbols:
             raise HTTPException(400, "symbols required")
         with get_db() as session:

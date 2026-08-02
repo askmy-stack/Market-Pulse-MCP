@@ -172,3 +172,20 @@ def test_pagination_recent_quotes_offset_limit(client):
     assert body["metadata"]["offset"] == 0
     assert body["metadata"]["limit"] == 1
     assert body["metadata"]["next_offset"] is None
+
+
+def test_limit_above_max_returns_422(client):
+    resp = client.get("/news/latest?limit=501")
+    assert resp.status_code == 422
+
+
+def test_api_rate_limit_returns_429(client, monkeypatch):
+    monkeypatch.setenv("MARKETPULSE_RATE_LIMIT", "2/minute")
+    from marketpulse.api import rate_limit as rl
+
+    rl.limiter.reset()
+    # New client shares the same app/DB monkeypatches but starts after reset.
+    fresh = TestClient(client.app)
+    assert fresh.get("/symbols").status_code == 200
+    assert fresh.get("/symbols").status_code == 200
+    assert fresh.get("/symbols").status_code == 429
