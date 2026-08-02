@@ -29,6 +29,7 @@ Mock Producers → Redpanda Topics → Consumers/Processor → PostgreSQL → Fa
 - `market_context` — correlated context events
 - `market_briefs` — generated briefs
 - `pipeline_health` — health telemetry
+- `pipeline_dlq` — poison / failed consumer messages (dead-letter queue)
 
 ## Storage
 

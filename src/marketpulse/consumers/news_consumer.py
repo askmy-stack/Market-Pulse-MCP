@@ -7,6 +7,7 @@ import signal
 from marketpulse.db.repository import Repository
 from marketpulse.db.session import get_db, init_db
 from marketpulse.kafka.client import create_consumer, create_producer, parse_message, publish_event
+from marketpulse.kafka.dlq import route_poison_message
 from marketpulse.kafka.topics import COMPANY_NEWS, MARKET_NEWS, NEWS_EMBEDDINGS
 from marketpulse.news.embeddings import embed_news
 from marketpulse.observability.logging import get_logger, setup_logging
@@ -71,6 +72,8 @@ def run() -> None:
             logger.info("news_saved", headline=event.headline[:60])
         except Exception as exc:
             logger.error("news_processing_failed", error=str(exc))
+            route_poison_message(producer, msg, component="news-consumer", error=exc)
+            producer.flush(1)
 
     consumer.close()
 
