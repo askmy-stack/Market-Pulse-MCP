@@ -183,9 +183,14 @@ def test_api_rate_limit_returns_429(client, monkeypatch):
     monkeypatch.setenv("MARKETPULSE_RATE_LIMIT", "2/minute")
     from marketpulse.api import rate_limit as rl
 
+    # Clear shared in-memory storage from earlier tests in this module.
     rl.limiter.reset()
-    # New client shares the same app/DB monkeypatches but starts after reset.
+    storage = getattr(rl.limiter, "_storage", None)
+    if storage is not None and hasattr(storage, "storage"):
+        storage.storage.clear()
+
     fresh = TestClient(client.app)
+    assert fresh.get("/health").status_code == 200  # unscoped; no rate limit
     assert fresh.get("/symbols").status_code == 200
     assert fresh.get("/symbols").status_code == 200
     assert fresh.get("/symbols").status_code == 429
